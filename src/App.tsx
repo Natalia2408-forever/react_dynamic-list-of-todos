@@ -12,53 +12,41 @@ import { getTodos } from './api';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [filter, setFilter] = useState<'all' | 'completed' | 'active'>('all');
+  const [isModal, setIsModal] = useState(false);
   const [query, setQuery] = useState<string>('');
 
   useEffect(() => {
     setLoading(true);
-    getTodos()
-      .then(setTodos)
-      .finally(() => setLoading(false));
+    getTodos().then(data => {
+      setTodos(data);
+      setLoading(false);
+    });
   }, []);
 
   const handleShow = (todo: Todo) => {
     setSelectedTodo(todo);
+    setIsModal(true);
   };
 
-  const handleCloseModal = () => {
+  const handleClose = () => {
     setSelectedTodo(null);
+    setIsModal(false);
   };
 
-  const handleFilterChange = (value: 'all' | 'completed' | 'active') => {
-    setFilter(value);
-  };
+  const visibleTodos = todos.filter(todo => {
+    if (filter === 'active' && todo.completed) {
+      return false;
+    }
 
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-  };
+    if (filter === 'completed' && !todo.completed) {
+      return false;
+    }
 
-  const handleClearQuery = () => {
-    setQuery('');
-  };
-
-  let visibleTodos = todos;
-
-  if (filter === 'completed') {
-    visibleTodos = visibleTodos.filter(todo => todo.completed);
-  }
-
-  if (filter === 'active') {
-    visibleTodos = visibleTodos.filter(todo => !todo.completed);
-  }
-
-  if (query.trim() !== '') {
-    visibleTodos = visibleTodos.filter(todo =>
-      todo.title.toLowerCase().includes(query.toLowerCase()),
-    );
-  }
+    return todo.title.toLowerCase().includes(query.toLowerCase());
+  });
 
   return (
     <>
@@ -71,9 +59,8 @@ export const App: React.FC = () => {
               <TodoFilter
                 filter={filter}
                 query={query}
-                onFilterChange={handleFilterChange}
-                onQueryChange={handleQueryChange}
-                onClearQuery={handleClearQuery}
+                onFilterChange={setFilter}
+                onQueryChange={setQuery}
               />
             </div>
 
@@ -81,14 +68,18 @@ export const App: React.FC = () => {
               {loading ? (
                 <Loader />
               ) : (
-                <TodoList todos={visibleTodos} onShow={handleShow} />
+                <TodoList
+                  todos={visibleTodos}
+                  onShow={handleShow}
+                  selectedTodo={selectedTodo}
+                />
               )}
             </div>
           </div>
         </div>
       </div>
-      {selectedTodo !== null && (
-        <TodoModal todo={selectedTodo} onClose={handleCloseModal} />
+      {selectedTodo && isModal && (
+        <TodoModal todo={selectedTodo} onClose={handleClose} />
       )}
     </>
   );
